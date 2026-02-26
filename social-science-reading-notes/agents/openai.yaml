@@ -1,0 +1,5 @@
+interface:
+  display_name: "Social Science Reading Notes"
+  short_description: "Convert reading resources to model-friendly text and write structured Markdown notes into {书名}-notes."
+  default_prompt: "Convert the provided reading resource(s) if needed (and skip conversion if already done). Then deeply read the user-requested chapters/sections and write detailed, well-structured Markdown notes focused strictly on the original book content, including short direct quotes as evidence (no location markers). Save notes under {书名}-notes/."
+

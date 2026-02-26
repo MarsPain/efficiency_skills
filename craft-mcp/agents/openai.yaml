@@ -1,0 +1,15 @@
+interface:
+  display_name: "Craft MCP"
+  short_description: "通过 Craft MCP 管理笔记、纪要与工作日志"
+  default_prompt: "使用 $craft-mcp 把我的想法整理成会议纪要并写回 Craft。"
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "craft"
+      description: "Craft MCP server（需在宿主应用中配置）"
+      transport: "streamable_http"
+      url: "https://mcp.craft.do/links/xxx/mcp"
+
+policy:
+  allow_implicit_invocation: true
