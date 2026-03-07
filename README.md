@@ -19,6 +19,7 @@ Typical skill folder contents:
 | Skill | Description | Path |
 | --- | --- | --- |
 | `craft-mcp` | Connect to Craft via MCP to search, summarize, create, and update notes/documents. | `craft-mcp/` |
+| `omnifocus-mcp` | Reliable OmniFocus execution with OmniFocus MCP tools for task and project management. | `omnifocus-mcp/` |
 | `social-science-reading-notes` | Convert social science/psychology resources into text and generate detailed evidence-based reading notes. | `social-science-reading-notes/` |
 
 ---
@@ -47,6 +48,7 @@ Typical skill folder contents:
 | 技能 | 说明 | 路径 |
 | --- | --- | --- |
 | `craft-mcp` | 通过 MCP 连接 Craft，执行笔记/文档的检索、总结、创建与更新。 | `craft-mcp/` |
+| `omnifocus-mcp` | 通过 OmniFocus MCP 工具可靠地执行任务和项目管理。 | `omnifocus-mcp/` |
 | `social-science-reading-notes` | 将社会科学/心理学资料转为文本，并产出基于原文证据的深度阅读笔记。 | `social-science-reading-notes/` |
 
 </details>
