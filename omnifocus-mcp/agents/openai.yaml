@@ -1,0 +1,4 @@
+interface:
+  display_name: "OmniFocus MCP"
+  short_description: "Run reliable OmniFocus workflows with MCP tools"
+  default_prompt: "Use $omnifocus-mcp to capture, organize, review, and execute actions in OmniFocus."
