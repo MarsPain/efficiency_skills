@@ -1,6 +1,6 @@
 ---
 name: craft-mcp
-description: "Connect to Craft via MCP and operate on notes/documents: create pages, append meeting notes, manage daily notes, run scoped fuzzy search across folders/documents, summarize evidence-backed findings, organize content, and keep a Craft knowledge base up to date. Use when a user mentions Craft/Craft Docs, MCP, 笔记/文档/知识库, 会议纪要, 每日笔记, 在某个范围内检索并总结, 检索并更新 Craft 内容, or wants to write back results into Craft."
+description: "Connect to Craft via MCP and operate on notes/documents: create pages, append meeting notes, manage daily notes, route and write ARR notes into fixed category documents, run scoped search across folders/documents/daily notes with optional model-generated expansions, summarize evidence-backed findings, organize content, and keep a Craft knowledge base up to date. Use when a user mentions Craft/Craft Docs, MCP, arr笔记, append and review note, The_append_and_review_notes, 笔记/文档/知识库, 会议纪要, 每日笔记, 在指定文件夹/文档/日期范围内检索并总结, 检索并更新 Craft 内容, or wants to write back results into Craft."
 ---
 
 # Craft MCP
@@ -12,6 +12,8 @@ description: "Connect to Craft via MCP and operate on notes/documents: create pa
 - 将 Craft MCP URL 视为“可访问整个空间的链接/凭证”，不要在公共渠道传播；除非用户明确授权，不要把 URL 写进仓库或日志。
 
 如需让用户自行配置，按 Craft 官方指引操作（见 `references/craft-mcp-setup.md`）。
+
+若请求涉及 arr 笔记，额外读取 `references/categories.md`。
 
 ## 开工前：发现并映射工具
 
@@ -32,37 +34,92 @@ description: "Connect to Craft via MCP and operate on notes/documents: create pa
 - 默认采用“追加到末尾”或“在指定标题下追加”，除非用户要求重排全文。
 - 不整篇覆盖写回；优先块级/段落级修改（若 MCP 支持）。
 - 保留原有排版（标题层级、列表、分隔线）；新增内容沿用原文风格。
+- `arr笔记` 是例外：新内容始终写到目标文档顶部，而不是末尾。
 
-## 范围模糊检索协议（核心）
+## ARR 笔记协议（The Append and Review Notes）
 
-当用户请求“在 xxx 下搜索 yyy 并总结”时，始终先显式构造检索参数：
+目标：支持 Karpathy 风格的 append-and-review notes，在固定分类文档中将新条目严格插到最上方。
 
+### 1) 触发与范围
+
+- 只要用户提到 `arr笔记`，始终把工作范围锁定到顶层文件夹 `The_append_and_review_notes/`。
+- 不在该文件夹外创建、搜索或更新 ARR 内容，除非用户明确撤销这一约束。
+- 先在 Craft 中定位这个文件夹；若找不到，再向用户说明缺失并请求更精确的位置或由你创建。
+
+### 2) 文档选择
+
+- ARR 只允许使用 `references/categories.md` 中定义的固定类别文档。
+- 将 `思想` 与 `思想.md` 视为同一类别；文档解析时允许用户省略 `.md` 后缀。
+- 若用户明确指定类别或文档，始终写入该目标文档。
+- 若用户未指定类别，读取 `references/categories.md` 的“路由提示”和“歧义规则”，选择最匹配的固定类别，并在回复中用 1 句话简短说明判断依据。
+- 若用户指定的类别不在白名单内，不新增白名单外新类别；改为请用户从白名单中确认，或按最匹配的既有类别处理并说明原因。
+
+### 3) ARR 检索复用规则
+
+- 一旦已经确定 ARR 笔记所在的类别文档，后续如果用户提出搜索、查询、回顾、汇总、对比等需求，改为基于下方“范围检索协议”执行，而不是另起一套检索流程。
+- 若用户指定了明确类别或文档，则将 `scope_type` 视为 `document`，`scope` 锁定到该类别文档。
+- 若用户只说“arr笔记”但未指定类别，先按本协议完成类别路由；确定类别文档后，再按 `document` 范围执行检索。
+- 若用户明确要求跨多个 ARR 类别搜索，则将 `scope_type` 视为 `folder`，`scope` 锁定到 `The_append_and_review_notes/`，再按“范围检索协议”执行。
+- 在 ARR 场景下复用“范围检索协议”时，仍优先遵守 ARR 的范围约束：默认不扩展到 `The_append_and_review_notes/` 之外。
+
+### 4) 写入方式
+
+- 每个类别一个单独文档；缺失时在 `The_append_and_review_notes/` 下创建对应类别文档，再继续写入。
+- 新笔记一律严格插入到文档顶部，保持“最新在最前”的时间序。
+- 优先使用支持页面顶部插入的操作：例如 `markdown_add` 或 `blocks_add` 配合 `position: "start"` 和目标 `pageId`。
+- 若工具不支持直接写到页面起始位置，则先读取首块，再用 `before` 插入到首块之前；不要退化为追加到末尾。
+- 除非用户明确要求整理或改写，原有历史条目不重排、不覆盖。
+
+### 5) 回复约定
+
+- 执行前先复述：将在哪个类别文档中，以“顶部插入新 block/段落”的方式写入什么内容。
+- 若是模型自动路由类别，在执行前附一句简短判断，例如“我会放到 `工程`，因为内容重点是工具链与实现权衡。”
+
+### 6) 示例
+
+- 用户：`arr笔记，以下内容添加到“思想”中：xxx`
+- 处理：在 `The_append_and_review_notes/` 中定位 `思想` 文档，并把 `xxx` 作为新 block 插入到页面顶部。
+
+## 范围检索协议（核心）
+
+当用户请求“在 xxx 下搜索 yyy ”时，始终先显式构造检索参数：
+
+- `scope_type`：`folder` / `document` / `daily_notes` / `global`
 - `scope`：`folderIds` / `documentIds` / `location` / 日期区间
 - `topic`：核心主题词（用户原话）
-- `expansions`：同义词、别名、中英文变体、缩写/全称
+- `fuzzy_search`：`true` / `false`（默认 `false`；仅在用户明确要求或确认开启时设为 `true`）
+- `expansions`：由模型自行分析并生成的同义词、别名、中英文变体、缩写/全称；`fuzzy_search=false` 时留空或仅保留原词
 - `time_window`：可选，最近 N 天/周
 - `output_style`：摘要、要点、行动项、对比结论
 
 ### 1) 范围解析（Scope Resolution）
 
-- 用户给“xxx 下”时，优先把 `xxx` 解析为文件夹范围（`folderIds`）。
+- 先根据用户措辞判断 `xxx` 的范围类型：
+  - 若用户明确说“文件夹 / 目录 / folder”，解析为文件夹范围（`folderIds`）。
+  - 若用户明确说“文档 / 页面 / note / doc”，解析为文档范围（`documentIds`）。
+  - 若用户明确说“日记 / daily note / daily notes”，或 `xxx` 是明确日期、相对日期或日期区间，只在 `location: "daily_notes"` 内搜索，并加对应日期过滤。
+  - 若无法判断 `xxx` 是什么类型，优先视为文件夹范围。
 - 若匹配多个候选范围：先返回候选并让用户确认一次。
 - 若用户未给范围：默认全空间，但必须在输出里明确写明“全空间检索”。
 
 ### 2) 查询扩展（Query Expansion）
 
-至少生成 3 组扩展查询：
+- 不把扩展词生成这一步甩给用户；由模型先分析 `topic`，再决定是否生成 `expansions`。
+- 若 `fuzzy_search=false`：
+  - 仅搜索用户指定的关键词 `yyy`。
+  - 不额外加入同义词、别名、中英文变体、缩写/全称。
+- 若 `fuzzy_search=true`：至少生成 3 组扩展查询，并优先保留高相关扩展，避免无关发散：
+  - 原词：`yyy`
+  - 近义/别名：术语别称、团队内部叫法
+  - 变体：中英混合、缩写/全称、常见拼写差异
 
-- 原词：`yyy`
-- 近义/别名：术语别称、团队内部叫法
-- 变体：中英混合、缩写/全称、常见拼写差异
-
-优先顺序：精确词 > include 多词 AND > regex 模糊匹配。
+- `fuzzy_search=true` 时的优先顺序：精确词 > include 多词 AND > regex 模糊匹配。
 
 ### 3) 两阶段检索（Recall -> Rerank）
 
 - 阶段 A（粗召回）：
-  - 在 `scope` 内用 `documents_search` 执行多轮查询（原词 + 扩展词）。
+  - `fuzzy_search=false`：在 `scope` 内仅用原词执行查询。
+  - `fuzzy_search=true`：在 `scope` 内用 `documents_search` 执行多轮查询（原词 + 扩展词）。
   - 合并去重，得到候选文档集。
 - 阶段 B（重排）：
   - 按“标题命中 > 内容命中密度 > 最近修改时间”排序。
@@ -79,7 +136,8 @@ description: "Connect to Craft via MCP and operate on notes/documents: create pa
 默认按以下结构输出：
 
 - 检索范围：文件夹/文档/日期范围
-- 检索式：原词 + 扩展词
+- 模糊搜索：开启 / 关闭
+- 检索式：关闭时仅原词；开启时为原词 + 模型生成扩展词
 - 命中概览：文档数、精读数、主要主题
 - 主题总结：
   - 结论
@@ -132,7 +190,7 @@ description: "Connect to Craft via MCP and operate on notes/documents: create pa
 
 目标：找到相关文档，读取后做增量更新（补充、纠错、总结、行动项）。
 
-1. 先按“范围模糊检索协议”完成召回与精读。
+1. 先按“范围检索协议”完成召回与精读。
 2. 输出候选及理由；唯一高置信匹配时可直接说明将操作该文档。
 3. 完成用户请求（如补缺失小节、加 `## TL;DR`、整理行动项）。
 4. 写回遵循：

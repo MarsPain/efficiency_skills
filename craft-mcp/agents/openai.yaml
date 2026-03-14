@@ -1,7 +1,7 @@
 interface:
   display_name: "Craft MCP"
-  short_description: "通过 Craft MCP 管理笔记、纪要与工作日志"
-  default_prompt: "使用 $craft-mcp 把我的想法整理成会议纪要并写回 Craft。"
+  short_description: "通过 Craft MCP 管理笔记、ARR 分类文档与范围检索"
+  default_prompt: "使用 $craft-mcp 在 Craft 中处理 arr笔记或在指定文件夹、文档、日期范围内检索并更新内容。"
 
 dependencies:
   tools:
