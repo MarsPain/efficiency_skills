@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bookkeeping"
+  short_description: "Record, query, analyze, update, and track subscriptions in Excel ledgers"
+  default_prompt: "Use $bookkeeping to record bills, query or summarize spending, update transactions precisely, and track service subscriptions in the Excel ledger."

@@ -66,7 +66,9 @@ description: "Connect to Craft via MCP and operate on notes/documents: create pa
 
 - 每个类别一个单独文档；缺失时在 `The_append_and_review_notes/` 下创建对应类别文档，再继续写入。
 - 新笔记一律严格插入到文档顶部，保持“最新在最前”的时间序。
-- 优先使用支持页面顶部插入的操作：例如 `markdown_add` 或 `blocks_add` 配合 `position: "start"` 和目标 `pageId`。
+- ARR 新增内容禁止使用任何标题样式：不要使用 Markdown 标题（`#`/`##`/`###`）或 Craft 标题样式（`h1`~`h4`）。
+- 优先使用可显式控制文本样式的顶部插入操作：`blocks_add` 配合 `position: "start"`、目标 `pageId` 与 `textStyle: "caption"`。
+- 顶部插入新条目后，在其与下方历史内容之间额外保留两个空行以增强区分。
 - 若工具不支持直接写到页面起始位置，则先读取首块，再用 `before` 插入到首块之前；不要退化为追加到末尾。
 - 除非用户明确要求整理或改写，原有历史条目不重排、不覆盖。
 
