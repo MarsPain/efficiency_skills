@@ -10,16 +10,27 @@ description: 使用 Excel 管理个人或家庭账本，支持多账户、收入
 把账本数据持久化到本地 Excel：
 - 把配置保存到 `bookkeeping-config.xlsx`
 - 把每个月账单保存到 `YYYY/YYYY-MM.xlsx`
-- 始终通过 `uv run python scripts/ledger_excel.py ...` 读写，避免手工改表导致结构漂移
+- 始终通过 `uv run python "$LEDGER_SCRIPT" ...` 读写（`LEDGER_SCRIPT` 必须指向 skill 目录下的 `scripts/ledger_excel.py`），避免手工改表导致结构漂移
 
 除用户明确要求外，不要直接修改工作簿结构；优先用脚本更新。
+
+## Script Path
+
+每次执行前先固定脚本绝对路径（不要依赖当前工作目录）：
+```bash
+BOOKKEEPING_SKILL_DIR="${CODEX_HOME:-$HOME/.codex}/skills/bookkeeping"
+LEDGER_SCRIPT="$BOOKKEEPING_SKILL_DIR/scripts/ledger_excel.py"
+test -f "$LEDGER_SCRIPT"
+```
+
+若 `test -f` 失败，先停止并修正路径；不要退回到其他目录下的同名脚本。
 
 ## Core Rules
 
 1. 把所有账本数据放在用户指定根目录下，例如 `Ledger/`。
 2. 先确保存在配置工作簿，再写入月度工作簿：
 ```bash
-uv run python scripts/ledger_excel.py bootstrap --root Ledger --month 2026-03
+uv run python "$LEDGER_SCRIPT" bootstrap --root Ledger --month 2026-03
 ```
 3. 相对时间先转成明确日期再执行。例如“最近一个月”先换成 `--date-from YYYY-MM-DD --date-to YYYY-MM-DD`，不要把相对时间原样传给脚本。
 4. 录入支出或收入时，必须保存：
@@ -79,7 +90,7 @@ uv run python scripts/ledger_excel.py bootstrap --root Ledger --month 2026-03
 
 首次使用时执行：
 ```bash
-uv run python scripts/ledger_excel.py bootstrap --root Ledger --month 2026-03
+uv run python "$LEDGER_SCRIPT" bootstrap --root Ledger --month 2026-03
 ```
 
 这会创建：
@@ -98,7 +109,7 @@ uv run python scripts/ledger_excel.py bootstrap --root Ledger --month 2026-03
 
 录入普通支出：
 ```bash
-uv run python scripts/ledger_excel.py add \
+uv run python "$LEDGER_SCRIPT" add \
   --root Ledger \
   --date 2026-03-11 \
   --direction expense \
@@ -110,7 +121,7 @@ uv run python scripts/ledger_excel.py add \
 
 录入收入：
 ```bash
-uv run python scripts/ledger_excel.py add \
+uv run python "$LEDGER_SCRIPT" add \
   --root Ledger \
   --date 2026-03-11 \
   --direction income \
@@ -125,7 +136,7 @@ uv run python scripts/ledger_excel.py add \
 
 录入服务订阅时，优先补充订阅信息：
 ```bash
-uv run python scripts/ledger_excel.py add \
+uv run python "$LEDGER_SCRIPT" add \
   --root Ledger \
   --date 2026-03-11 \
   --direction expense \
@@ -149,7 +160,7 @@ uv run python scripts/ledger_excel.py add \
 
 账户间转移使用：
 ```bash
-uv run python scripts/ledger_excel.py transfer \
+uv run python "$LEDGER_SCRIPT" transfer \
   --root Ledger \
   --date 2026-03-11 \
   --amount 1000 \
@@ -164,7 +175,7 @@ uv run python scripts/ledger_excel.py transfer \
 
 新增月订阅或年订阅：
 ```bash
-uv run python scripts/ledger_excel.py add-recurring \
+uv run python "$LEDGER_SCRIPT" add-recurring \
   --root Ledger \
   --name "Notion 年费" \
   --direction expense \
@@ -182,7 +193,7 @@ uv run python scripts/ledger_excel.py add-recurring \
 
 把某月应发生的周期账单落到月账本：
 ```bash
-uv run python scripts/ledger_excel.py apply-recurring --root Ledger --month 2026-09
+uv run python "$LEDGER_SCRIPT" apply-recurring --root Ledger --month 2026-09
 ```
 
 同一周期账单同一个月只应用一次。
@@ -193,7 +204,7 @@ uv run python scripts/ledger_excel.py apply-recurring --root Ledger --month 2026
 
 按类别、备注、时间查账：
 ```bash
-uv run python scripts/ledger_excel.py query \
+uv run python "$LEDGER_SCRIPT" query \
   --root Ledger \
   --direction expense \
   --date-from 2026-02-15 \
@@ -222,7 +233,7 @@ uv run python scripts/ledger_excel.py query \
 
 对筛选后的账单做统计：
 ```bash
-uv run python scripts/ledger_excel.py stats \
+uv run python "$LEDGER_SCRIPT" stats \
   --root Ledger \
   --direction expense \
   --date-from 2026-02-15 \
@@ -253,7 +264,7 @@ uv run python scripts/ledger_excel.py stats \
 
 先按 ID 精确修改：
 ```bash
-uv run python scripts/ledger_excel.py update \
+uv run python "$LEDGER_SCRIPT" update \
   --root Ledger \
   --id TX-20260311-xxxxxx \
   --set-note "摄影配件" \
@@ -262,7 +273,7 @@ uv run python scripts/ledger_excel.py update \
 
 批量修改时必须确认范围，再显式允许批量：
 ```bash
-uv run python scripts/ledger_excel.py update \
+uv run python "$LEDGER_SCRIPT" update \
   --root Ledger \
   --month 2026-03 \
   --level1 数码数字 \
@@ -296,7 +307,7 @@ uv run python scripts/ledger_excel.py update \
 
 设置月初余额：
 ```bash
-uv run python scripts/ledger_excel.py set-opening \
+uv run python "$LEDGER_SCRIPT" set-opening \
   --root Ledger \
   --month 2026-03 \
   --account 支付宝 \
@@ -305,7 +316,7 @@ uv run python scripts/ledger_excel.py set-opening \
 
 设置月末实际余额：
 ```bash
-uv run python scripts/ledger_excel.py set-closing \
+uv run python "$LEDGER_SCRIPT" set-closing \
   --root Ledger \
   --month 2026-03 \
   --account 支付宝 \
@@ -314,7 +325,7 @@ uv run python scripts/ledger_excel.py set-closing \
 
 查看核对结果：
 ```bash
-uv run python scripts/ledger_excel.py month-report --root Ledger --month 2026-03
+uv run python "$LEDGER_SCRIPT" month-report --root Ledger --month 2026-03
 ```
 
 若 `closing_balance` 与脚本计算出的 `computed_closing` 不一致，优先提示差额，不要静默改写。
@@ -323,7 +334,7 @@ uv run python scripts/ledger_excel.py month-report --root Ledger --month 2026-03
 
 为标签设置年度额度：
 ```bash
-uv run python scripts/ledger_excel.py set-limit \
+uv run python "$LEDGER_SCRIPT" set-limit \
   --root Ledger \
   --year 2026 \
   --tag 摄影 \
@@ -333,7 +344,7 @@ uv run python scripts/ledger_excel.py set-limit \
 
 查看额度使用情况：
 ```bash
-uv run python scripts/ledger_excel.py limit-report --root Ledger --year 2026
+uv run python "$LEDGER_SCRIPT" limit-report --root Ledger --year 2026
 ```
 
 额度按标签累计；一笔账单可带多个标签。默认把整笔金额计入命中的每个标签额度，因此给用户解释时要明确这一点。
@@ -342,12 +353,12 @@ uv run python scripts/ledger_excel.py limit-report --root Ledger --year 2026
 
 查看所有订阅：
 ```bash
-uv run python scripts/ledger_excel.py subscription-report --root Ledger
+uv run python "$LEDGER_SCRIPT" subscription-report --root Ledger
 ```
 
 查看未来 14 天内到续费/到期日的订阅：
 ```bash
-uv run python scripts/ledger_excel.py subscription-report \
+uv run python "$LEDGER_SCRIPT" subscription-report \
   --root Ledger \
   --status active \
   --due-within 14
