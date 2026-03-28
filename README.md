@@ -18,9 +18,10 @@ Typical skill folder contents:
 
 | Skill | Description | Path |
 | --- | --- | --- |
-| `craft-mcp` | Connect to Craft via MCP to search, summarize, create, and update notes/documents. | `craft-mcp/` |
-| `omnifocus-mcp` | Reliable OmniFocus execution with OmniFocus MCP tools for task and project management. | `omnifocus-mcp/` |
-| `social-science-reading-notes` | Convert social science/psychology resources into text and generate detailed evidence-based reading notes. | `social-science-reading-notes/` |
+| `bookkeeping` | Personal/family ledger management using Excel. Supports multi-account tracking, income/expense categorization, tags, recurring bills, subscription tracking, and monthly reporting. | `bookkeeping/` |
+| `craft-mcp` | Connect to Craft via MCP to search, summarize, create, and update notes/documents. Supports ARR (append-and-review) notes, daily notes, meeting minutes, and scoped retrieval protocols. | `craft-mcp/` |
+| `omnifocus-mcp` | Reliable OmniFocus execution with MCP tools for task and project management. Includes safe fuzzy retrieval, mutation safety protocols, and end-to-end GTD workflows. | `omnifocus-mcp/` |
+| `social-science-reading-notes` | Convert social science/psychology/behavioral science resources into text and generate detailed evidence-based reading notes. Supports chapter-level deep reading, incremental writing, and keyword-based review. | `social-science-reading-notes/` |
 
 ---
 
@@ -33,7 +34,7 @@ Typical skill folder contents:
 
 ## 仓库说明
 
-本仓库按“一个技能一个目录”组织，每个技能以 `SKILL.md` 为核心入口。
+本仓库按"一个技能一个目录"组织，每个技能以 `SKILL.md` 为核心入口。
 
 常见目录结构：
 
@@ -47,8 +48,9 @@ Typical skill folder contents:
 
 | 技能 | 说明 | 路径 |
 | --- | --- | --- |
-| `craft-mcp` | 通过 MCP 连接 Craft，执行笔记/文档的检索、总结、创建与更新。 | `craft-mcp/` |
-| `omnifocus-mcp` | 通过 OmniFocus MCP 工具可靠地执行任务和项目管理。 | `omnifocus-mcp/` |
-| `social-science-reading-notes` | 将社会科学/心理学资料转为文本，并产出基于原文证据的深度阅读笔记。 | `social-science-reading-notes/` |
+| `bookkeeping` | 使用 Excel 管理个人或家庭账本，支持多账户、收支分类、标签、周期性账单、订阅追踪与月度汇总。 | `bookkeeping/` |
+| `craft-mcp` | 通过 MCP 连接 Craft，执行笔记/文档的检索、总结、创建与更新，支持 ARR 笔记、每日笔记、会议纪要等协议。 | `craft-mcp/` |
+| `omnifocus-mcp` | 通过 OmniFocus MCP 工具可靠地执行任务和项目管理，包含安全模糊检索、变更安全协议与完整 GTD 工作流。 | `omnifocus-mcp/` |
+| `social-science-reading-notes` | 将社会科学/心理学/行为科学资料转为文本，产出基于原文证据的深度阅读笔记，支持章节深读、增量续写与关键词复盘。 | `social-science-reading-notes/` |
 
 </details>
