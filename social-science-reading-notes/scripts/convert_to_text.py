@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -28,6 +29,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
+from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 
@@ -56,21 +58,83 @@ def sha256_file(path: Path) -> str:
 def load_manifest(notes_dir: Path) -> dict:
     manifest_path = notes_dir / MANIFEST_NAME
     if not manifest_path.exists():
-        return {"version": 1, "items": []}
+        return {"version": 2, "items": []}
     try:
-        return json.loads(manifest_path.read_text("utf-8"))
+        manifest = json.loads(manifest_path.read_text("utf-8"))
+        if not isinstance(manifest, dict):
+            return {"version": 2, "items": []}
+        if not isinstance(manifest.get("items"), list):
+            manifest["items"] = []
+        return manifest
     except Exception:
-        return {"version": 1, "items": []}
+        return {"version": 2, "items": []}
+
+
+def _manifest_key(item: dict) -> tuple[str, str] | None:
+    digest = item.get("sha256")
+    outputs = item.get("outputs") or {}
+    main_txt = outputs.get("main_txt")
+    if not isinstance(digest, str) or not digest:
+        return None
+    if not isinstance(main_txt, str) or not main_txt:
+        return None
+    return (digest, main_txt)
+
+
+def compact_manifest(manifest: dict, max_entries: int = 2000) -> dict:
+    items = manifest.get("items", [])
+    if not isinstance(items, list):
+        items = []
+
+    dedup: dict[tuple[str, str], dict] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = _manifest_key(item)
+        if key is None:
+            continue
+        prev = dedup.get(key)
+        if prev is None:
+            dedup[key] = item
+            continue
+        # Keep the most recent record when duplicates exist.
+        if str(item.get("converted_at", "")) >= str(prev.get("converted_at", "")):
+            dedup[key] = item
+
+    compact_items = sorted(
+        dedup.values(),
+        key=lambda it: str(it.get("converted_at", "")),
+        reverse=True,
+    )
+    if max_entries > 0:
+        compact_items = compact_items[:max_entries]
+
+    return {"version": 2, "items": compact_items}
 
 
 def save_manifest(notes_dir: Path, manifest: dict) -> None:
+    manifest = compact_manifest(manifest)
     manifest_path = notes_dir / MANIFEST_NAME
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", "utf-8")
 
 
-def find_cached_item(manifest: dict, input_abs: str, digest: str) -> dict | None:
+def find_cached_item(manifest: dict, digest: str, input_abs: str | None = None) -> dict | None:
+    candidates: list[dict] = []
     for it in manifest.get("items", []):
-        if it.get("input_abs") == input_abs and it.get("sha256") == digest:
+        if it.get("sha256") == digest:
+            candidates.append(it)
+    if not candidates:
+        return None
+
+    # Prefer matching original path when available, then any digest match.
+    if input_abs:
+        for it in candidates:
+            if it.get("input_abs") == input_abs:
+                return it
+    for it in candidates:
+        outputs = it.get("outputs") or {}
+        main_txt = outputs.get("main_txt")
+        if isinstance(main_txt, str) and main_txt:
             return it
     return None
 
@@ -136,11 +200,78 @@ def strip_html_to_text(html: str) -> str:
     return parser.get_text()
 
 
+def _epub_fallback_members(zf: ZipFile) -> list[str]:
+    members = [m for m in zf.namelist() if m.lower().endswith((".xhtml", ".html", ".htm"))]
+    members.sort()
+    return members
+
+
+def _resolve_zip_href(opf_path: str, href: str) -> str:
+    href = href.replace("\\", "/")
+    return posixpath.normpath(posixpath.join(posixpath.dirname(opf_path), href))
+
+
+def epub_members_in_reading_order(zf: ZipFile) -> list[str]:
+    fallback = _epub_fallback_members(zf)
+    if not fallback:
+        return []
+
+    normalized_to_actual: dict[str, str] = {}
+    for name in zf.namelist():
+        normalized_to_actual[name.lstrip("./").lower()] = name
+
+    try:
+        container_xml = zf.read("META-INF/container.xml")
+        container_root = ET.fromstring(container_xml)
+        rootfile = container_root.find(".//{*}rootfile")
+        if rootfile is None:
+            return fallback
+        opf_path = rootfile.attrib.get("full-path", "").strip()
+        if not opf_path:
+            return fallback
+        opf_xml = zf.read(opf_path)
+        opf_root = ET.fromstring(opf_xml)
+    except Exception:
+        return fallback
+
+    manifest_map: dict[str, str] = {}
+    for item in opf_root.findall(".//{*}manifest/{*}item"):
+        item_id = (item.attrib.get("id") or "").strip()
+        href = (item.attrib.get("href") or "").strip()
+        if not item_id or not href:
+            continue
+        resolved = _resolve_zip_href(opf_path, href).lstrip("./")
+        manifest_map[item_id] = resolved
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for itemref in opf_root.findall(".//{*}spine/{*}itemref"):
+        idref = (itemref.attrib.get("idref") or "").strip()
+        if not idref:
+            continue
+        resolved = manifest_map.get(idref)
+        if not resolved:
+            continue
+        actual = normalized_to_actual.get(resolved.lower())
+        if not actual:
+            continue
+        if not actual.lower().endswith((".xhtml", ".html", ".htm")):
+            continue
+        if actual in seen:
+            continue
+        ordered.append(actual)
+        seen.add(actual)
+
+    for name in fallback:
+        if name not in seen:
+            ordered.append(name)
+    return ordered
+
+
 def convert_epub_to_text(epub_path: Path) -> str:
     parts: list[str] = []
     with ZipFile(epub_path, "r") as zf:
-        members = [m for m in zf.namelist() if m.lower().endswith((".xhtml", ".html", ".htm"))]
-        members.sort()
+        members = epub_members_in_reading_order(zf)
         for name in members:
             try:
                 data = zf.read(name)
@@ -184,6 +315,39 @@ def write_text(path: Path, text: str) -> None:
     path.write_text(text.replace("\r\n", "\n").replace("\r", "\n"), "utf-8")
 
 
+def split_long_paragraph(paragraph: str, max_chars: int) -> list[str]:
+    paragraph = paragraph.strip()
+    if not paragraph:
+        return []
+    if len(paragraph) <= max_chars:
+        return [paragraph]
+
+    # Prefer sentence-like boundaries, then fall back to hard splits.
+    units = [u.strip() for u in re.split(r"(?<=[。！？!?\.])\s+|\n+", paragraph) if u.strip()]
+    if not units:
+        units = [paragraph]
+
+    pieces: list[str] = []
+    cur = ""
+    for unit in units:
+        if len(unit) > max_chars:
+            if cur:
+                pieces.append(cur.strip())
+                cur = ""
+            for i in range(0, len(unit), max_chars):
+                pieces.append(unit[i : i + max_chars].strip())
+            continue
+        candidate = f"{cur} {unit}".strip() if cur else unit
+        if len(candidate) > max_chars and cur:
+            pieces.append(cur.strip())
+            cur = unit
+        else:
+            cur = candidate
+    if cur:
+        pieces.append(cur.strip())
+    return [p for p in pieces if p]
+
+
 def chunk_text(text: str, chunk_chars: int) -> list[str]:
     if chunk_chars <= 0:
         return []
@@ -193,16 +357,14 @@ def chunk_text(text: str, chunk_chars: int) -> list[str]:
     cur: list[str] = []
     cur_len = 0
     for p in paras:
-        p = p.strip()
-        if not p:
-            continue
-        piece = p + "\n\n"
-        if cur_len + len(piece) > chunk_chars and cur:
-            chunks.append("".join(cur).strip() + "\n")
-            cur = []
-            cur_len = 0
-        cur.append(piece)
-        cur_len += len(piece)
+        for segment in split_long_paragraph(p, chunk_chars):
+            piece = segment + "\n\n"
+            if cur_len + len(piece) > chunk_chars and cur:
+                chunks.append("".join(cur).strip() + "\n")
+                cur = []
+                cur_len = 0
+            cur.append(piece)
+            cur_len += len(piece)
     if cur:
         chunks.append("".join(cur).strip() + "\n")
     return chunks
@@ -226,7 +388,7 @@ def convert_one(input_path: Path, notes_dir: Path, chunk_chars: int, force: bool
     chunks_root.mkdir(parents=True, exist_ok=True)
 
     manifest = load_manifest(notes_dir)
-    cached = None if force else find_cached_item(manifest, input_abs, digest)
+    cached = None if force else find_cached_item(manifest, digest, input_abs=input_abs)
     if cached:
         main_txt = Path(cached["outputs"]["main_txt"])
         if main_txt.exists():

@@ -1,58 +1,105 @@
 ---
 name: social-science-reading-notes
-description: "Convert social science / psychology / behavioral science book resources (PDF/EPUB/TXT/MD/HTML) into model-friendly text (skip if already converted), then deeply read user-requested chapters/sections and write detailed, structured Markdown reading notes focused strictly on the original book content, with short direct quotes as evidence (no location markers). Save outputs under {书名}-notes/ (create folder if missing)."
+description: "将社会科学/心理学/行为科学书籍资源（PDF/EPUB/TXT/MD/HTML）转换为模型友好文本（已转换则跳过），并对用户指定章节/小节进行深度阅读，输出仅基于原书的详细结构化 Markdown 笔记（含短引文证据、不含页码定位）。适用于单章深读、多章批量总结、增量续写与按关键词复盘。输出统一管理在 {书名}-notes/，按章节/小节分文件，默认不覆盖。"
 ---
 
-# Social Science Reading Notes
+# 社会科学阅读笔记
 
-## Inputs (ask and confirm)
+## 输入确认
 
-- Ask for: `书名`、`阅读范围`（章节/小节/主题关键词）、`原始资源路径`（文件或文件夹）、`输出语言`（默认中文）、`是否要追加到已有笔记`（默认新建）。
-- If the user specifies chapters but the text headings are unclear, ask for 1-2 anchor phrases that appear near the start/end of the target section.
+- 必问：`书名`、`阅读范围`（章节/小节/主题关键词）、`原始资源路径`（文件或文件夹）、`输出语言`（默认中文）、`多章节输出策略`（默认按章拆分）、`写入模式`（默认 `new`）、`是否允许覆盖同名文件`（默认否）。
+- 如果用户给了章节，但文本标题不清晰，补问 1-2 个锚点短语（位于目标段落开头/结尾附近）。
 
-## Step 1: Convert sources (only if needed)
+## 路径与文件策略（必须遵守）
 
-1. Create notes folder: `{书名}-notes/`.
-2. Convert the user-provided resource(s) into UTF-8 text, and cache results under `{书名}-notes/_sources/`.
+1. 使用 `{书名}-notes/` 作为根目录（不存在则创建）。
+2. 目录结构固定为：
+   - `{书名}-notes/_sources/`：转换后的源文本
+   - `{书名}-notes/_chunks/`：大文本分块
+   - `{书名}-notes/notes/`：阅读笔记
+   - `{书名}-notes/index.md`：笔记索引
+3. 根据 `阅读范围` 生成 scope slug 作为默认文件名：
+   - 例如：`第9章` -> `chapter-09.md`，`第10章` -> `chapter-10.md`
+   - 兜底：转换为小写 ASCII slug（字母/数字/连字符）
+   - 若无法可靠生成，使用 `section-YYYYMMDD-HHMMSS.md`
+4. 默认目标文件：`{书名}-notes/notes/<scope-slug>.md`
+5. 禁止默认写入 `{书名}-notes/notes.md`，仅当用户明确指定该文件时才允许。
+6. 默认不覆盖：
+   - 当目标已存在且模式是 `new`：创建同级新文件（如 `<scope-slug>-YYYYMMDD-HHMMSS.md`）
+   - 仅当用户明确要求时才允许覆盖
+7. 笔记写入和索引更新必须走 `scripts/write_note.py`，不要用临时手写文件方式绕过。
+8. 当 `阅读范围` 覆盖多章（例如 `第9-10章`）时，默认按章拆分为多个文件；仅在用户明确要求“合并输出”时才写入单文件。
 
-Run:
+## Python 运行约定（必须遵守）
+
+- 所有 Python 脚本统一使用 `uv` 虚拟环境执行：`uv run python ...`
+- 若需要额外依赖，使用 `uv run --with <package> python ...`
+
+## 步骤 1：转换源文件（仅在需要时）
+
+1. 按上述结构创建目录。
+2. 将用户资源转换为 UTF-8 文本，并缓存到 `{书名}-notes/_sources/`。
+
+命令：
 
 ```bash
-python3 scripts/convert_to_text.py \
+uv run python scripts/convert_to_text.py \
   --input "<原始资源路径>" \
-  --book-title "<书名>"
+  --notes-dir "<绝对路径>/<书名>-notes"
 ```
 
-Notes:
-- Run the command from this skill folder (so `scripts/convert_to_text.py` resolves), or use an absolute path to the script.
-- Use `--notes-dir "<自定义路径>"` when the user wants the `{书名}-notes/` folder in a specific location.
-- The converter skips work if an identical input (same absolute path + sha256) was already converted.
-- PDF conversion requires `pdftotext` (Poppler). If extraction is extremely short, treat it as a scanned PDF and ask the user to OCR first (e.g. `ocrmypdf`), then re-run conversion.
+说明：
+- 在 skill 目录执行该命令，或使用脚本绝对路径。
+- 优先显式传 `--notes-dir "<绝对路径>"`，避免 cwd 变化导致输出落错目录。
+- 仅在明确不传 `--notes-dir` 时，才改用 `--book-title "<书名>"`。
+- 转换缓存主要按 `sha256` 命中；路径仅用于优先匹配而非硬条件。
+- PDF 依赖 `pdftotext`（Poppler）。若提取文本异常短，视为扫描件，先 OCR（如 `ocrmypdf`）再转换。
 
-## Step 2: Locate the requested section(s)
+## 步骤 2：定位目标章节/片段
 
-- Prefer searching within `{书名}-notes/_sources/*.txt` (or `{书名}-notes/_chunks/` when the book is large).
-- Use tight keyword anchors for chapter titles, section titles, or repeated terms; extract only the relevant span to reason about.
-- If the user wants “深读某章/某节”, first outline the chapter’s internal structure as the author presents it, then proceed in that order.
+- 优先在 `{书名}-notes/_sources/*.txt` 检索（大书可改查 `{书名}-notes/_chunks/`）。
+- 使用紧凑锚词（章节标题/小节标题/重复关键词）截取相关文本范围。
+- 若用户要求“深读某章/某节”，先按作者原始结构列出内部顺序，再按该顺序解读。
 
-## Step 3: Deep reading and note writing (requirements)
+## 步骤 3：深读与写作要求
 
-### Content constraints (must follow)
+### 内容约束（必须遵守）
 
-- Write notes at a **detailed** granularity; mild redundancy is OK.
-- Do **not** extend beyond the book: no extra research, no external examples, no personal speculation. Stay inside the author’s claims, definitions, examples, and argument structure.
-- Quote actively, but keep quotes **short** (prefer 1-2 sentences). Use quotes only to support the specific point being noted.
-- Do not add location markers (no page/section numbers).
+- 细粒度写作，允许适度冗余。
+- 严禁超出原书：不做外部检索、不加书外例子、不做个人推演。
+- 主动引用，但引用保持短句（优先 1-2 句），仅用于支撑当前观点。
+- 不写页码/节号等位置标记。
 
-### Markdown style constraints (must follow)
+### Markdown 约束（必须遵守）
 
-- Use clear hierarchy and spacing, with tasteful use of: paragraphs, soft line breaks (two spaces + newline), blockquotes, tables, lists, and horizontal rules.
-- Use headings **sparingly** and use **only level-4 headings** (`####`). Everything else must be normal text (plus bold, quotes, lists, etc.).
-- Bold important claims and selected “golden lines”: `**...**`.
+- 使用清晰层次和留白，可适度使用段落、软换行、引用、表格、列表、分隔线。
+- 标题只用四级标题 `####`，且数量克制；其余内容使用普通文本。
+- 对关键结论和金句使用 `**加粗**`。
 
-### Output rules (must follow)
+### 输出规则（必须遵守）
 
-- Save Markdown notes into `{书名}-notes/` (create the folder if missing).
-- Default note file: `{书名}-notes/notes.md` (unless the user requests a different filename).
-- Prefer using `assets/note-template.md` as the starting point, and fill it with the requested section(s).
-- If `notes.md` already exists and the user asked to append, append a new dated block at the end separated by `---`.
+- 笔记写入 `{书名}-notes/`。
+- 优先基于 `assets/note-template.md` 填写目标章节内容。
+- 必须通过 `scripts/write_note.py` 写入（强制）。
+- 默认目标为 `{书名}-notes/notes/<scope-slug>.md`，由脚本解析。
+- 写入模式由脚本强制约束：
+  - `new`（默认）：新建；若重名自动加时间戳
+  - `append`：追加带日期块（`---` 分隔）；文件不存在则创建
+  - `overwrite`：仅在显式确认后，并传 `--allow-overwrite`
+
+命令模板：
+
+```bash
+uv run python scripts/write_note.py \
+  --scope "<阅读范围>" \
+  --notes-dir "<绝对路径>/<书名>-notes" \
+  --mode "<new|append|overwrite>" \
+  --content-file "<笔记内容文件>"
+```
+
+- 若用户指定精确输出路径，传 `--output-file "<路径>"`。
+- 可选传入来源追踪参数：`--source "<来源文件或chunk>" --source-sha256 "<sha256>"`。
+- 每次成功写入后，脚本会自动更新 `{书名}-notes/index.md`，包含结构化字段：`Time`、`Scope`、`File`、`Mode`、`Action`、`Source`、`SourceSHA256`、`ContentSHA256`、`EntryKey`。
+- 兼容旧文件：
+  - 若存在 legacy `{书名}-notes/notes.md`，默认保持不动
+  - 仅在用户明确要求时才继续写入 legacy `notes.md`

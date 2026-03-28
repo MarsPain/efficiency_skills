@@ -1,5 +1,4 @@
 interface:
-  display_name: "Social Science Reading Notes"
-  short_description: "Convert reading resources to model-friendly text and write structured Markdown notes into {书名}-notes."
-  default_prompt: "Convert the provided reading resource(s) if needed (and skip conversion if already done). Then deeply read the user-requested chapters/sections and write detailed, well-structured Markdown notes focused strictly on the original book content, including short direct quotes as evidence (no location markers). Save notes under {书名}-notes/."
-
+  display_name: "社会科学阅读笔记"
+  short_description: "将阅读资源转换为模型友好文本，并在 {书名}-notes/ 以章节粒度进行批量/增量写作，默认不覆盖。"
+  default_prompt: "按需先转换用户提供的阅读资源（已转换则跳过），然后深读用户指定的章节/小节并输出详细结构化 Markdown 笔记。内容必须严格基于原书，引用短句作为证据（不含页码/位置标记）。多章节范围默认按章拆分输出（仅在用户明确要求时合并）。输出到 {书名}-notes/ 的章节/小节文件，并通过 scripts/write_note.py 执行写入与 index 更新；除非用户明确要求覆盖，否则默认不覆盖。"
