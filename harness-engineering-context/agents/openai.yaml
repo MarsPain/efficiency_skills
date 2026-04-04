@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harness Engineering Context"
+  short_description: "Manage agent context and docs lifecycle"
+  default_prompt: "Use this skill to design, migrate, validate, and maintain repository context systems with AGENTS.md as a concise map and docs/ as the source of truth."
