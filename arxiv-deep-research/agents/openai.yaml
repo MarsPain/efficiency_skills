@@ -1,0 +1,4 @@
+interface:
+  display_name: "arXiv Deep Research"
+  short_description: "Systematic arXiv literature review + insights"
+  default_prompt: "Use $arxiv-deep-research to run an arXiv-centered deep literature review on a topic."
