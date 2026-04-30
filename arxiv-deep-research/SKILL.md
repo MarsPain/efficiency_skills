@@ -27,17 +27,20 @@ Choose the lightest workflow that satisfies the request:
    Use when the user asks for a starter list, reading list, seminal papers,
    recent papers, or a compact set of methods/datasets. Stop after search +
    triage unless the user explicitly asks for deeper synthesis.
-   Deliver `papers.md`, `papers.bib`, `papers.json`, and a brief triage summary.
+   Deliver `papers.md`, `papers.bib`, `papers.json`, `research-export.md`, and
+   a brief triage summary.
 
 2. **Deep survey / insight report**
    Use when the user asks for related work, a literature review, a comparison,
    a taxonomy, research gaps, or a citation-backed report.
-   Deliver `report.md`, `search_log.md`, and optionally `insights.json`.
+   Deliver `report.md`, `search_log.md`, `research-export.md`, and optionally
+   `insights.json`.
 
 3. **Incremental update**
    Use when `papers.json` already exists or the user asks to refresh/update an
    earlier review. Load `references/incremental-research.md` before searching.
-   Deliver the updated paper set, updated report artifacts, and a changelog.
+   Deliver the updated paper set, updated report artifacts, refreshed
+   `research-export.md`, and a changelog.
 
 Default to **Deep survey / insight report** only when the user wants synthesis,
 not when they merely want a paper list.
@@ -171,7 +174,55 @@ Use `references/report-outline.md` as the default structure for `report.md`.
 Only read `references/insights-schema.md` when you need to emit
 machine-readable `insights.json`.
 
-## Step 6 — Quality Gate (Definition of Done)
+Do not paste full BibTeX into `report.md`; reference `papers.bib` instead. Full
+BibTeX is useful for citation tooling, but it makes copy-ready notes noisy.
+
+## Step 6 — Portable export (copy-ready single file)
+
+Always produce a single Markdown export after the report or reading list is
+ready. This file is for direct copying into Notion, Craft, Obsidian, or for MCP
+insertion into a notes app.
+
+Default output: `research-export.md`.
+
+Use `scripts/compose_research_export.py`:
+
+```bash
+uv run python scripts/compose_research_export.py \
+  --bundle-dir research/diffusion-image-editing \
+  --topic "Diffusion-based image editing" \
+  --out research/diffusion-image-editing/research-export.md
+```
+
+Include in `research-export.md`:
+- Executive summary / TL;DR from `report.md`
+- Scope and methodology
+- Taxonomy and comparative insights
+- Annotated core papers
+- Open problems and research directions
+- Paper table from `papers.md`
+- Evidence table if available
+- Search log for reproducibility
+- `insights.json` in a fenced code block if produced
+
+Keep the original bundle files. They are still needed for validation,
+incremental updates, spreadsheet use, and citation tooling. Treat
+`research-export.md` as the user-facing, copy-ready artifact.
+
+Do not include BibTeX in `research-export.md` by default; it is usually too long
+for note apps and distracts from the synthesis. The export composer strips a
+top-level `## BibTeX` section from `report.md` to avoid accidental duplication.
+Keep BibTeX in `papers.bib`. Only add it to the export when the user explicitly
+asks for a self-contained citation archive:
+
+```bash
+uv run python scripts/compose_research_export.py \
+  --bundle-dir research/diffusion-image-editing \
+  --topic "Diffusion-based image editing" \
+  --include-bibtex
+```
+
+## Step 7 — Quality Gate (Definition of Done)
 
 Before delivering, first run the deterministic bundle validator, then do the
 manual research-quality pass:
@@ -180,7 +231,8 @@ manual research-quality pass:
 uv run python scripts/validate_research_bundle.py \
   --bundle-dir research/diffusion-image-editing \
   --require-search-log \
-  --require-report
+  --require-report \
+  --require-export
 ```
 
 Then run `references/quality-gate-checklist.md`:
@@ -191,6 +243,8 @@ Then run `references/quality-gate-checklist.md`:
 - `search_log.md` exists with all queries, timestamps, result counts, and filter
   rationale.
 - `papers.json` and `papers.bib` match the cited set.
+- `research-export.md` exists and contains the report, paper table, and
+  reproducibility trail in one copy-ready Markdown file.
 
 ## Deliverables (default)
 
@@ -204,6 +258,7 @@ Then run `references/quality-gate-checklist.md`:
 | `report.md` | Survey-style writeup with citations + limitations + open problems |
 | `evidence-table.md` *(recommended for deep survey)* | Cross-paper evidence table used during synthesis |
 | `insights.json` *(optional)* | Machine-readable summary: taxonomy, trends, gaps, open questions |
+| `research-export.md` | Single copy-ready Markdown file for Notion/Craft/Obsidian/MCP insertion |
 
 Create a report skeleton from `papers.json`:
 
@@ -219,6 +274,14 @@ Create an evidence table skeleton when doing deep survey work:
 ```bash
 cp references/evidence-table-template.md \
   research/diffusion-image-editing/evidence-table.md
+```
+
+Create the portable export after the report is drafted:
+
+```bash
+uv run python scripts/compose_research_export.py \
+  --bundle-dir research/diffusion-image-editing \
+  --topic "Diffusion-based image editing"
 ```
 
 ## Guardrails (research quality)

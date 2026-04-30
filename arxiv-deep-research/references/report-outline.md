@@ -48,9 +48,9 @@ Each direction should include:
 - why it matters
 - a concrete experiment / benchmark / ablation to test it
 
-## 7) Appendix: paper list + BibTeX
+## 7) Appendix: paper list and reproducibility
 
 - papers.md (export table)
-- papers.bib
+- papers.bib (keep as a separate file; do not inline full BibTeX)
 - search_log.md
 - evidence-table.md (if used)

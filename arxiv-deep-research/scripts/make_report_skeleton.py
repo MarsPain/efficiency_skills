@@ -83,7 +83,7 @@ def _render(topic: str, papers: list[dict]) -> str:
     lines.append("")
     lines.append("## Notes")
     lines.append("")
-    lines.append("- papers.bib contains BibTeX entries for the export.")
+    lines.append("- papers.bib contains BibTeX entries for citation tooling.")
     lines.append("- Add per-paper notes in a separate reading-notes.md if needed.")
     lines.append("- Use evidence-table.md to track cross-paper claims before final synthesis.")
     lines.append("")

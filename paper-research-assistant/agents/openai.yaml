@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Research Assistant"
+  short_description: "Resolve paper sources and save reusable research judgments."
+  default_prompt: "Use this skill to resolve academic paper sources, then read, critique, compare, synthesize, and save papers into evidence-backed local Markdown paper cards, literature matrices, and research notes."

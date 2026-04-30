@@ -17,6 +17,18 @@ BIB_EPRINT_RE = re.compile(r"^\s*eprint\s*=\s*\{([^}]+)\},?\s*$", re.MULTILINE)
 PANDOC_CITE_RE = re.compile(r"(?<![\w/])@([A-Za-z0-9:_-]+)")
 
 
+def _strip_fenced_code_blocks(text: str) -> str:
+    lines: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def _load_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -111,7 +123,7 @@ def _validate_search_log(path: Path, errors: list[str]) -> None:
 def _validate_report(path: Path, paper_ids: set[str], bib_keys: set[str], errors: list[str]) -> None:
     if not _require_file(path, "report.md", errors):
         return
-    text = path.read_text(encoding="utf-8")
+    text = _strip_fenced_code_blocks(path.read_text(encoding="utf-8"))
 
     cited_ids = {_normalize_arxiv_id(m) for m in ARXIV_URL_RE.findall(text)}
     cited_keys = set(PANDOC_CITE_RE.findall(text))
@@ -126,6 +138,16 @@ def _validate_report(path: Path, paper_ids: set[str], bib_keys: set[str], errors
 
     if not cited_ids and not cited_keys:
         errors.append("report.md does not contain any detectable citations (@bibkey or arXiv abs links).")
+
+
+def _validate_export(path: Path, errors: list[str]) -> None:
+    if not _require_file(path, "research-export.md", errors):
+        return
+    text = path.read_text(encoding="utf-8")
+    required_headings = ["## Export summary", "## Paper table"]
+    for heading in required_headings:
+        if heading not in text:
+            errors.append(f"research-export.md is missing required heading: {heading}")
 
 
 def _validate_insights(path: Path, errors: list[str]) -> None:
@@ -162,6 +184,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--bundle-dir", required=True, help="Directory containing papers/report/search artifacts")
     parser.add_argument("--require-search-log", action="store_true", help="Fail if search_log.md is missing or invalid")
     parser.add_argument("--require-report", action="store_true", help="Fail if report.md is missing or invalid")
+    parser.add_argument("--require-export", action="store_true", help="Fail if research-export.md is missing or incomplete")
     parser.add_argument("--require-insights", action="store_true", help="Fail if insights.json is missing or invalid")
     args = parser.parse_args(argv)
 
@@ -177,6 +200,9 @@ def main(argv: list[str]) -> int:
 
     if args.require_report or (bundle_dir / "report.md").exists():
         _validate_report(bundle_dir / "report.md", paper_ids, bib_keys, errors)
+
+    if args.require_export or (bundle_dir / "research-export.md").exists():
+        _validate_export(bundle_dir / "research-export.md", errors)
 
     if args.require_insights or (bundle_dir / "insights.json").exists():
         _validate_insights(bundle_dir / "insights.json", errors)
