@@ -1,0 +1,4 @@
+interface:
+  display_name: "CS Critical Thinking Partner"
+  short_description: "CS/LLM risk-first critique"
+  default_prompt: "Use $cs-critical-thinking-partner to critique this CS design, algorithm, LLM training plan, Agent system, or ML experiment for hidden assumptions, edge cases, and validation gaps."

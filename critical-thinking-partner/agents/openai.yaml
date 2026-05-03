@@ -1,0 +1,4 @@
+interface:
+  display_name: "Critical Thinking Partner"
+  short_description: "Audit assumptions, evidence, logic, and blind spots"
+  default_prompt: "Use $critical-thinking-partner to audit this note for hidden assumptions, weak evidence, conceptual drift, and better questions."

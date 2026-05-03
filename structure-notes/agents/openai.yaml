@@ -1,0 +1,4 @@
+interface:
+  display_name: "Structure Notes"
+  short_description: "Polish and restructure rough notes"
+  default_prompt: "Use $structure-notes to turn my rough notes into a clear, rigorous, structured draft."
