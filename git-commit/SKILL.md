@@ -60,9 +60,11 @@ Create local commits deliberately: preserve the user's work, stage only intentio
    - Write the commit message in English.
    - Use Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `build:`, `ci:`, `perf:`, or another standard type that fits the staged change.
    - Prefer one concise subject line, for example `docs: add safe git commit workflow`.
-   - For broad or complex changes, add a blank line after the subject and use unordered list bullets for concrete details.
+   - For broad or complex changes, add a blank line after the subject and use unordered list bullets for concrete details; keep list items contiguous with no blank lines between bullets.
+   - Put all body bullets in one body argument. Do not pass one `-m` per bullet, because Git renders each `-m` argument as a separate paragraph with a blank line between them.
    - Keep the subject focused on the committed outcome, not the process.
-   - Run `git commit -m "type: subject"` for simple commits, or use multiple `-m` arguments for a body.
+   - Run `git commit -m "type: subject"` for simple commits, or `git commit -m "type: subject" -m $'- Bullet one\n- Bullet two\n- Bullet three'` for complex commits.
+   - After complex commits, verify the rendered message with `git log -1 --pretty=%B` if practical.
    - If hooks modify files or the commit fails, inspect the new state before retrying.
 
 8. Report:
@@ -118,6 +120,25 @@ type: concise English subject
 - Update another meaningful part of the change
 - Preserve any important compatibility, migration, or verification note
 ```
+
+Keep exactly one blank line between the subject and the body list. Do not insert blank lines between bullets in the same list.
+
+Use this command shape for complex commits so Git renders the bullets as one contiguous list:
+
+```bash
+git commit -m "type: concise English subject" -m $'- Add concrete detail about one meaningful part of the change\n- Update another meaningful part of the change\n- Preserve any important compatibility, migration, or verification note'
+```
+
+Do not write complex commit bodies like this:
+
+```bash
+git commit -m "type: concise English subject" \
+  -m "- Add concrete detail about one meaningful part of the change" \
+  -m "- Update another meaningful part of the change" \
+  -m "- Preserve any important compatibility, migration, or verification note"
+```
+
+That command creates blank lines between every bullet because Git treats each body `-m` as a separate paragraph.
 
 Choose the type by primary intent:
 

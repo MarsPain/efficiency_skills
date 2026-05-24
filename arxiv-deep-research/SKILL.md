@@ -73,7 +73,7 @@ Clarify only the fields that materially change the search:
 | **Time window** | Last N years + seminal exceptions | Last 3 years + seminal pre-2023 |
 | **arXiv areas** | Categories (e.g., cs.LG, cs.CV, cs.CL) | Infer from topic; default to cs.LG + cs.AI |
 | **Output** | Language, length, format | Chinese if user asks in Chinese; English otherwise; ~3000–6000 words |
-| **Core set size** | Target number of core papers | 20–30 |
+| **Core set size** | Target number of core papers | 20–30; use 8–15 for compact surveys when the user asks for "just the best N" |
 | **Max papers fetched** | Upper bound on initial search | 200 |
 
 ## Step 1 — Search strategy (arXiv-first, iterative)
@@ -102,10 +102,21 @@ uv run python scripts/arxiv_search.py \
   --query 'all:"diffusion model" AND (all:"image editing" OR all:"inpainting")' \
   --category cs.CV --category cs.LG \
   --max-results 200 \
+  --sort-by lastUpdatedDate \
+  --sort-order descending \
+  --date-from 2023-01-01 \
   --search-log research/diffusion-image-editing/search_log.md \
   --log-rationale "Initial broad recall query for diffusion-based image editing" \
   --out-dir research/diffusion-image-editing
 ```
+
+Key parameters:
+- `--sort-by relevance|lastUpdatedDate|submittedDate` and
+  `--sort-order ascending|descending`: use `lastUpdatedDate` or
+  `submittedDate` with descending order for recency-focused searches.
+- `--date-from YYYY-MM-DD` and `--date-to YYYY-MM-DD`: client-side published
+  date filters. Do not use `--date-cutoff`; it is not supported.
+- `--page-size N`: per-request arXiv API page size; keep at or below 200.
 
 If network is blocked, ask the user for arXiv IDs and use `--ids`:
 
@@ -157,6 +168,12 @@ For each core paper, fill the structured note template in
 Keep an evidence table so synthesis stays grounded in citations. Start from
 `references/evidence-table-template.md` and extend only the columns you need.
 
+Compact-core shortcut: when the final core set has 15 papers or fewer, do not
+create separate deep-reading note files unless the user asks for them. Put
+concise structured annotations directly in `report.md` under an annotated
+core-papers section, and use an inline evidence table only when it materially
+improves the synthesis.
+
 ## Step 5 — Synthesis (deep insights, not summaries)
 
 Produce:
@@ -173,6 +190,13 @@ Produce:
 Use `references/report-outline.md` as the default structure for `report.md`.
 Only read `references/insights-schema.md` when you need to emit
 machine-readable `insights.json`.
+
+Citation format in `report.md`: cite papers with Pandoc-style `@bibkey`
+references that exactly match keys in `papers.bib`. The search script generates
+keys as `FirstAuthorLastNameYYYY_arxiv_id`, with `/` and `.` replaced by `_`,
+including version suffixes when present; examples:
+`@Zhang2025_2502_09297v5`, `@Alonso2024_2405_12399v2`. Do not invent semantic
+keys such as `@zhang2025when`.
 
 Do not paste full BibTeX into `report.md`; reference `papers.bib` instead. Full
 BibTeX is useful for citation tooling, but it makes copy-ready notes noisy.
@@ -245,6 +269,14 @@ Then run `references/quality-gate-checklist.md`:
 - `papers.json` and `papers.bib` match the cited set.
 - `research-export.md` exists and contains the report, paper table, and
   reproducibility trail in one copy-ready Markdown file.
+
+Troubleshooting validation errors:
+- If validation says `report.md cites BibTeX keys not present in papers.bib`,
+  replace invented or semantic citation keys with the exact keys from
+  `papers.bib`, for example `@Zhang2025_2502_09297v5`. The validator prints
+  available key examples when this happens.
+- If validation rejects a date parameter during search, use `--date-from` and
+  `--date-to`; `--date-cutoff` is not a valid `arxiv_search.py` argument.
 
 ## Deliverables (default)
 

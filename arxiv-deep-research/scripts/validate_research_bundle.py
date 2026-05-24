@@ -96,6 +96,13 @@ def _validate_bib(path: Path, paper_ids: set[str], errors: list[str]) -> set[str
     return keys
 
 
+def _format_bib_key_examples(bib_keys: set[str], limit: int = 5) -> str:
+    examples = [f"@{key}" for key in sorted(bib_keys)[:limit]]
+    if not examples:
+        return ""
+    return " Expected format examples from papers.bib: " + ", ".join(examples)
+
+
 def _validate_markdown_export(path: Path, label: str, errors: list[str]) -> None:
     if not _require_file(path, label, errors):
         return
@@ -134,7 +141,12 @@ def _validate_report(path: Path, paper_ids: set[str], bib_keys: set[str], errors
 
     unknown_keys = sorted(cited_keys - bib_keys)
     if unknown_keys:
-        errors.append("report.md cites BibTeX keys not present in papers.bib: " + ", ".join(unknown_keys[:10]))
+        errors.append(
+            "report.md cites BibTeX keys not present in papers.bib: "
+            + ", ".join(unknown_keys[:10])
+            + "."
+            + _format_bib_key_examples(bib_keys)
+        )
 
     if not cited_ids and not cited_keys:
         errors.append("report.md does not contain any detectable citations (@bibkey or arXiv abs links).")
