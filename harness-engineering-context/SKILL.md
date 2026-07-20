@@ -1,156 +1,189 @@
 ---
 name: harness-engineering-context
-description: Use when restructuring repository context systems, defining roles for AGENTS.md/README.md/ARCHITECTURE.md, migrating canonical knowledge into docs/, managing versioned execution plans, or adding automated validation for documentation structure, cross-links, and context hygiene.
+description: Use when restructuring repository context systems, defining roles for root entrypoints and canonical docs, integrating CONTEXT.md, ADRs, design docs, issue-tracker configuration, and specs, or adding automated validation for structure, cross-links, source-of-truth boundaries, and context hygiene.
 ---
 
 # Harness Engineering Context
 
 ## Overview
 
-Build and maintain a stable repository-native context system: compact entrypoints at the root, canonical detail in `docs/`, versioned execution plans, and enforceable validation.
+Build and maintain one repository-native context system. Give every artifact type a clear job and one canonical home, keep entrypoints compact, create optional artifacts only when needed, and enforce the selected structure with executable checks.
 
 ## Core Contract
 
-1. Keep `AGENTS.md` as a compact map (target around 100 lines, avoid deep detail).
-2. Treat root documents as entrypoints with distinct jobs:
+1. Keep root entrypoints compact and non-duplicative:
    - `README.md`: human onboarding and repository entrypoint.
-   - `AGENTS.md`: agent working map and operational constraints.
-   - `ARCHITECTURE.md`: top-level architecture map linking into deeper design docs.
-3. Keep detailed knowledge under `docs/` as the system of record.
-4. Treat plans as first-class artifacts with clear lifecycle states.
-5. Enforce structure, cross-link validity, and source-of-truth boundaries with executable checks.
-6. Update implementation and its affected docs in the same change set.
+   - `AGENTS.md` by default, or a deliberately selected alternative: cross-agent working map and operational constraints. Tool-specific entrypoints such as `CLAUDE.md` may coexist when they stay concise and link to shared configuration.
+   - `ARCHITECTURE.md`: top-level architecture map linking into deeper design and decision records.
+2. Give each artifact type exactly one canonical location. Use `docs/` by default, while preserving standard protocol-owned locations such as root or context-local `CONTEXT.md`, context-local ADRs, configured issue trackers, and `.scratch/` for a local Markdown tracker.
+3. Treat domain language as distinct from architecture and implementation detail. Recognize `CONTEXT.md` or `CONTEXT-MAP.md` when present, but create them lazily rather than as empty governance shells.
+4. Keep specs, issues, design docs, and ADRs distinct:
+   - specs define a change's desired behavior, constraints, implementation decisions, testing decisions, and change-scoped delivery considerations;
+   - issues own work units, dependencies, assignees, and task state;
+   - design docs explain current or target-system structure, interfaces, data flow, constraints, failure modes, and alternatives;
+   - ADRs preserve one accepted, durable decision, its rationale, and non-obvious consequences.
+5. Keep the configured issue tracker as the only source of truth for work state, dependencies, assignment, and technical debt.
+6. Enforce structure, cross-link validity, and source-of-truth boundaries with executable checks.
+7. Update implementation and its affected docs in the same change set.
 
 ## Standard Layout
 
-Use this baseline unless the repository already has a stronger convention:
+Use this unified baseline unless the repository has a documented stronger convention. Entries marked optional are created only when the corresponding information or workflow exists.
 
 ```text
 README.md
-AGENTS.md
+AGENTS.md                         # default cross-agent map; a declared alternative is allowed
 ARCHITECTURE.md
+CONTEXT.md                        # optional: single-context domain glossary
+CONTEXT-MAP.md                    # optional alternative: multi-context map
+.scratch/                         # optional: local Markdown issue tracker only
 docs/
-├── README.md                    # docs navigation index
-├── DESIGN.md
-├── FRONTEND.md                  # if frontend exists or will exist
-├── SECURITY.md                  # if auth, secrets, data handling, or external surfaces exist
-├── PLANS.md
-├── PRODUCT_SENSE.md
-├── ROADMAP.md
-├── design-docs/
-├── exec-plans/
-│   ├── active/
-│   ├── completed/
-│   └── tech-debt/
-├── generated/
-├── product-specs/
-└── references/
+├── README.md                     # docs navigation index
+├── DESIGN.md                     # optional architecture overview and contracts
+├── FRONTEND.md                   # optional
+├── SECURITY.md                   # optional
+├── BACKEND.md                    # optional
+├── DATA.md                       # optional
+├── PRODUCT_SENSE.md              # optional
+├── ROADMAP.md                    # optional
+├── agents/                       # optional agent/skill operational configuration
+├── adr/                          # optional system-wide accepted decisions
+├── design-docs/                  # optional deep designs and alternatives
+├── generated/                    # optional generated technical artifacts
+├── product-specs/                # optional product and API specifications
+└── references/                   # optional external/supporting references
 ```
 
-Keep root files concise. Put depth in `docs/`. If a repository already uses top-level docs beyond the three root entrypoints, either:
+For multiple bounded contexts, a root `CONTEXT-MAP.md` points to each context's canonical `CONTEXT.md`. Context-specific ADRs may live beside that context under `docs/adr/`; system-wide ADRs remain in root `docs/adr/`.
 
-- keep them as short maps that link to canonical files in `docs/`; or
-- replace them with redirect stubs during migration.
+Do not create every optional file or directory. Document the active subset, link it from an entrypoint or index, and validate only the capabilities the repository has adopted.
 
-## Lifecycle Workflow
+## Workflow
 
 ### 1. Assess Current State
 
 Run a fast audit before editing:
 
-- Identify root entrypoints (`README.md`, `AGENTS.md`, `ARCHITECTURE.md`) and `docs/`.
-- Find duplicate or contradictory sources of truth.
-- Find broken links and stale references.
-- Find undocumented root docs or orphaned docs pages with no inbound links.
-- Confirm whether validation exists and is executed by tests/CI.
+- Identify human, agent, and architecture entrypoints, including `AGENTS.md` and `CLAUDE.md`.
+- Inspect `CONTEXT.md`, `CONTEXT-MAP.md`, root and context-local `docs/adr/`, `docs/agents/`, `docs/design-docs/`, `docs/product-specs/`, and `.scratch/` when present.
+- Read `docs/agents/domain.md` and `docs/agents/issue-tracker.md` when present; treat them as operational configuration, not duplicate narrative documentation.
+- Identify which artifact capabilities are active and where each source of truth lives.
+- Find duplicate or contradictory sources of truth, broken links, stale references, and orphaned canonical docs.
+- Confirm whether validation exists and is executed by tests or CI.
 
-### 2. Restructure Information Architecture
+### 2. Establish Entrypoints and Canonical Homes
 
 Apply progressive disclosure:
 
 - `README.md`: setup, main workflows, and navigation for humans.
-- `AGENTS.md`: map only (navigation, core constraints, high-level commands for agents).
-- `ARCHITECTURE.md`: top-level domain/package map and links to deeper design docs.
-- `docs/*.md`: canonical rules, constraints, and subsystem details.
-- `docs/design-docs/`: deep architecture and subsystem design.
-- `docs/exec-plans/*`: execution lifecycle artifacts.
-- `docs/generated/`: generated technical artifacts and README index.
-- `docs/product-specs/`: user flows, product requirements, and acceptance framing.
+- selected agent entrypoint: navigation, core constraints, high-level commands, and links to `docs/agents/` when configured.
+- `ARCHITECTURE.md`: top-level domain/package map plus links to deep designs and relevant ADRs.
+- `CONTEXT.md`: glossary only; no implementation detail, specifications, or task state.
+- `CONTEXT-MAP.md`: map of multiple contexts and their relationships; link to each canonical glossary.
+- `docs/README.md`: index the active documentation areas.
+- `docs/agents/`: issue-tracker, triage-label, domain-doc, and other agent workflow configuration.
+- `docs/adr/`: accepted system-wide architectural or domain decisions plus their supersession history.
+- context-local `docs/adr/`: decisions scoped to that context.
+- `docs/design-docs/`: current or target-system designs, alternatives under exploration, and subsystem analysis.
+- `docs/product-specs/`: user flows, requirements, and acceptance framing.
 - `docs/references/`: external references, tool conventions, and source material.
 
-Prefer explicit core rule docs when the repository needs them, for example:
+If both `AGENTS.md` and `CLAUDE.md` exist, allow tool-specific instructions in each, but keep shared operational configuration canonical under `docs/agents/` and link to it. Do not duplicate a full `## Agent skills` block or another shared rule set.
 
-- `docs/DESIGN.md`
-- `docs/FRONTEND.md`
-- `docs/SECURITY.md`
-- `docs/BACKEND.md`
-- `docs/DATA.md`
+### 3. Model Work Without Duplication
 
-Do not force every repository to have every file. Require only what the system actually needs, then validate that the chosen set is documented and linked.
+Determine the configured issue tracker from `docs/agents/issue-tracker.md` when it exists. Issues may live on an external service or under `.scratch/`; that tracker owns task status, dependency edges, assignment, and discussion.
 
-### 3. Manage Plans as First-Class Artifacts
+Use the spec as the change-scoped source of truth for desired behavior, accepted implementation and testing decisions, and any migration, rollout, rollback, or system-level verification that belongs only to that change.
 
-Maintain `docs/PLANS.md` plus concrete files under `docs/exec-plans/`:
+Use design docs for deeper current or target-system structure and alternatives that outlive one change. Update them as the system evolves.
 
-- `active/`: currently executing plans.
-- `completed/`: accepted plans with completion date.
-- `tech-debt/`: unresolved debt with impact and target stage.
+Create an ADR only when a decision meets all three conditions:
 
-When a plan finishes, move it from `active/` to `completed/` and sync status in `PLANS.md`.
+1. it is costly to reverse;
+2. it would surprise a future reader without context;
+3. it resolves a real trade-off among credible alternatives.
+
+An ADR records one accepted decision. Preserve its history by superseding it with a new ADR rather than rewriting the old rationale. While a design is still being explored, keep alternatives in the design doc. Once a qualifying decision is accepted, make its ADR authoritative for decision status and rationale; keep only a concise summary and link in the design doc. Link the ADR back to the design doc when broader context is useful.
+
+Do not force a pair: a design doc may need no ADR, and a focused ADR may need no design doc.
+
+Link work artifacts rather than copying them:
+
+- each implementation issue links to its parent spec; tracker-native parent/child relationships or generated views may provide backlinks without editing the spec;
+- an issue also links to relevant design docs or ADRs when needed;
+- design docs do not mirror live task state;
+- ADRs record the decision and consequences, not the implementation checklist;
+- migration or delivery checklists local to one slice remain in the relevant issue;
+- technical-debt items are recorded in the configured issue tracker; a roadmap may summarize and link them but does not own their state.
+
+Existing `docs/exec-plans/` content is legacy material, not part of the standard layout. Do not delete it during migration. Move active canonical content by responsibility into the relevant spec, issues, design docs, or ADRs; preserve completed records and inbound links as historical documentation.
 
 ### 4. Enforce Validation Guardrails
 
-Add an executable validator (for example `scripts/validate_docs.py`) and ensure it checks:
+Add an executable validator, for example `scripts/validate_docs.py`. Automate structural, link, scope, and explicit-status checks; keep semantic judgments such as whether a decision deserves an ADR in the review checklist unless repository metadata makes them deterministic. The validator should first discover the active artifact capabilities and canonical locations, then check:
 
-- required files/directories exist;
-- required root entrypoints exist and stay concise;
-- migration redirect docs are present when expected and point to canonical files;
-- markdown internal links resolve;
-- `AGENTS.md` links to core docs entrypoints;
-- `ARCHITECTURE.md` links to relevant architecture/design docs;
-- `docs/README.md` or equivalent docs index links to major sections;
-- core rule docs declared by the repository are present and reachable;
-- duplicate source-of-truth patterns are flagged;
-- plan buckets exist and are populated as expected.
+- required entrypoints exist and remain concise;
+- each shared operational rule set has exactly one owner even when multiple tool-specific entrypoints exist;
+- internal Markdown links resolve;
+- `CONTEXT-MAP.md` links to every declared context glossary;
+- a single-context glossary and multi-context map are not both authoritative;
+- root and context-local ADR scopes are valid and reachable;
+- design docs describe current or target-system design while ADRs preserve qualifying accepted decisions and supersession history;
+- accepted ADR-worthy decisions are linked rather than fully duplicated in design docs;
+- `docs/agents/` configuration is reachable from the entrypoint that owns the corresponding shared block and from the docs index;
+- `.scratch/` is treated as an issue store only when the configured tracker is Local Markdown;
+- specs, issues, design docs, and ADRs retain distinct ownership without duplicated canonical sections;
+- the configured issue tracker uniquely owns work state, dependencies, assignment, and technical debt;
+- legacy execution-plan material is preserved or migrated without becoming a second active source of truth.
 
-Add a unit test (for example `tests/test_docs_validation.py`) that runs the validator and fails on violations.
+Add a unit test, for example `tests/test_docs_validation.py`, that runs the validator and fails on violations.
+
+Read `references/validation-rules.md` before designing or changing validation behavior.
 
 ### 5. Keep Docs and Code in Lockstep
 
-For any architecture, workflow, or entrypoint change:
+For any architecture, workflow, domain-language, or entrypoint change:
 
-- update implementation;
-- update canonical `docs/` files in the same PR/commit;
+- update implementation where applicable;
+- update the canonical artifact in the same change set;
 - update `README.md` when setup, entrypoints, or contributor workflows change;
-- update `AGENTS.md` when agent instructions, navigation, or operating constraints change;
-- update `ARCHITECTURE.md` when domain boundaries, package structure, or system topology change;
-- run docs validator and unit tests;
+- update the relevant agent entrypoint or shared configuration owner when agent instructions, navigation, or operating constraints change;
+- update `ARCHITECTURE.md`, designs, and ADRs when boundaries, topology, or durable decisions change;
+- update `CONTEXT.md` only when canonical domain language changes;
+- run docs validation and relevant unit tests;
 - include validation command output in review notes.
 
 ## Review Checklist
 
-Use this checklist for review or pre-merge:
-
-- Do `README.md`, `AGENTS.md`, and `ARCHITECTURE.md` each have a clear non-overlapping role?
-- Is `AGENTS.md` only a map and not a dump of detailed specs?
-- Is `ARCHITECTURE.md` a top-level map rather than a second full copy of `docs/DESIGN.md`?
-- Is each major domain documented in `docs/` once (single source of truth)?
-- Are core rule docs present for the domains the repository actually has?
-- Are plan states (`active/completed/tech-debt`) current and non-contradictory?
-- Do redirect stubs clearly route to canonical docs?
-- Do automated validators catch broken links, structure regressions, and misplaced source-of-truth drift?
+- Do the human, agent, and architecture entrypoints have clear non-overlapping roles?
+- Does each shared operational rule set have one canonical owner, without preventing concise tool-specific entrypoints?
+- Does every active artifact type have one canonical location?
+- Is `CONTEXT.md` a glossary only, and is it absent when the repository has no domain language to record?
+- Does `CONTEXT-MAP.md` reach every relevant context glossary without competing with a root glossary?
+- Are system-wide and context-local ADRs clearly scoped?
+- Does each ADR record one decision that is costly to reverse, surprising without context, and based on a real trade-off?
+- Do design docs describe the current/target system and link accepted ADR-worthy decisions without copying their full rationale?
+- Are changed decisions represented by superseding ADRs and corresponding design-doc updates?
+- Are `docs/agents/` files configuration rather than duplicated narrative guidance?
+- Does the configured issue tracker uniquely own task state and dependencies?
+- Are specs, issues, design docs, and ADRs linked rather than copied?
+- Does change-scoped migration or delivery detail live in the spec or relevant issue rather than a parallel planning system?
+- Do validators catch broken links, orphaned canonical artifacts, invalid scopes, and source-of-truth drift?
 - Are validation checks wired into unit tests and CI flow?
 
 ## Editing Rules
 
-1. Prefer minimal, incremental docs refactors over big-bang rewrites.
-2. Preserve backward compatibility by keeping temporary redirect docs.
-3. Remove stale claims immediately when code behavior changes.
-4. Avoid putting volatile implementation detail in `AGENTS.md`.
-5. Keep `README.md`, `AGENTS.md`, and `ARCHITECTURE.md` short and link outward instead of duplicating deep detail.
-6. Do not add extra governance docs outside `docs/` unless they serve as root entrypoints.
+1. Prefer minimal, incremental refactors over big-bang rewrites.
+2. Preserve backward compatibility with temporary redirect documents where consumers can follow them; do not replace a path that downstream tooling directly edits with a redirect stub.
+3. Preserve established protocol-owned paths such as `CONTEXT.md`, `CONTEXT-MAP.md`, context-local ADRs, `docs/agents/`, and a configured `.scratch/` issue store.
+4. Remove stale claims immediately when code behavior changes.
+5. Avoid volatile implementation detail in root entrypoints and domain glossaries.
+6. Create optional governance artifacts lazily, only when they have real content or an active workflow to govern.
+7. Do not duplicate issue state in specs/design docs or durable decisions in issue discussion.
+8. Update design docs in place to reflect the current or target system; preserve accepted decision history by superseding ADRs instead of rewriting them.
 
 ## References
 
-- For concrete folder schema and migration decisions, read `references/context-system-spec.md`.
-- For validator scope and enforcement patterns, read `references/validation-rules.md`.
+- Read `references/context-system-spec.md` for artifact responsibilities, discovery rules, work boundaries, and migration decisions.
+- Read `references/validation-rules.md` for capability-aware validator scope and enforcement patterns.

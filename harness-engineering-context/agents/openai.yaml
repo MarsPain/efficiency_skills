@@ -1,4 +1,4 @@
 interface:
   display_name: "Harness Engineering Context"
-  short_description: "Manage repo context maps and docs validation"
-  default_prompt: "Use this skill to structure repository context systems with clear roles for README.md, AGENTS.md, ARCHITECTURE.md, and docs/, plus validation for links, plans, and context hygiene."
+  short_description: "Unify repo context, specs, issues, and decisions"
+  default_prompt: "Use this skill to give repository entrypoints, domain context, agent configuration, specs, issues, current/target design docs, and durable decision-history ADRs clear canonical roles, then validate links and source-of-truth boundaries."
